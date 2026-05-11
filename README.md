@@ -139,9 +139,13 @@ The match and import phases are documented further down; you can run them weeks 
 
 ## Full migration playbook
 
+Throughout this section:
+- **Current region** = the Apple ID region you're moving *from* (where your library currently lives).
+- **Destination region** = the region you're moving *to* (where you want your library to end up).
+
 The phases run independently with file-based handoff because real-world time elapses between them (Apple's 90-day region-change waiting period plus the cancel/resub gap).
 
-### 1. Validate auth (NZ account)
+### 1. Validate auth (current-region account)
 
 ```sh
 docker compose run --rm dev bun amtransfer.ts spike
@@ -149,34 +153,34 @@ docker compose run --rm dev bun amtransfer.ts spike
 
 Confirm `Overall: PASS`. Manually delete the `__amtransfer_spike__` playlist from music.apple.com.
 
-### 2. Export (NZ account, *before* cancellation)
+### 2. Export (current-region account, *before* cancellation)
 
 ```sh
 docker compose run --rm dev bun amtransfer.ts export
 ```
 
-`amtransfer-data/export.json` is now your safety net. Back it up somewhere durable (cloud drive, separate machine). After this step it's safe to cancel your NZ subscription.
+`amtransfer-data/export.json` is now your safety net. Back it up somewhere durable (cloud drive, separate machine). After this step it's safe to cancel your current-region subscription.
 
 ### 3. Region switch + resubscription
 
-Apple's region switcher enforces a 90-day waiting period since the last region change. Then resubscribe to Apple Music in your new region. Wait until your music.apple.com library is empty (it usually wipes within ~7 days of cancellation).
+Apple's region switcher enforces a 90-day waiting period since the last region change. Then resubscribe to Apple Music in your destination region. Wait until your music.apple.com library is empty (it usually wipes within ~7 days of cancellation).
 
-### 4. Harvest new tokens (US account)
+### 4. Harvest new tokens (destination-region account)
 
-Repeat the token-harvesting steps with your US-account session, replace the values in `.env`.
+Repeat the token-harvesting steps with your destination-region account session, replace the values in `.env`.
 
-### 5. Match (US tokens)
+### 5. Match (destination-region tokens)
 
 ```sh
 docker compose run --rm dev bun amtransfer.ts match
 ```
 
-`matched.json` and `unmatched.csv` appear. Skim `unmatched.csv` — it lists songs and albums the US store doesn't carry (region-locked releases, indie distribution gaps, items without ISRCs). For these you have two options:
+`matched.json` and `unmatched.csv` appear. Skim `unmatched.csv` — it lists songs and albums the destination store doesn't carry (region-locked releases, indie distribution gaps, items without ISRCs). For these you have two options:
 
 - Live without them.
-- Manually find a US-store equivalent (different release, live version, etc.) and add it to your library via music.apple.com.
+- Manually find a destination-store equivalent (different release, live version, etc.) and add it to your library via music.apple.com.
 
-### 6. Import (US tokens)
+### 6. Import (destination-region tokens)
 
 ```sh
 docker compose run --rm dev bun amtransfer.ts import
@@ -186,7 +190,7 @@ docker compose run --rm dev bun amtransfer.ts import
 
 ### Recovering from `unmatched.csv` and `import-failures.csv`
 
-Both files have the same essential columns (`name`, `artist`, `album`). Open in Numbers/Excel/Sheets. For each row, search for the song on music.apple.com US, click "+ Add" if the right one exists. There is no automated recovery in v0.1 — these files exist precisely so you have a sortable, filterable list of what to deal with manually.
+Both files have the same essential columns (`name`, `artist`, `album`). Open in Numbers/Excel/Sheets. For each row, search for the song on music.apple.com in your destination region, click "+ Add" if the right one exists. There is no automated recovery in v0.1 — these files exist precisely so you have a sortable, filterable list of what to deal with manually.
 
 ## What this tool does *not* do (v0.1)
 
@@ -195,7 +199,7 @@ Both files have the same essential columns (`name`, `artist`, `album`). Open in 
 - **Replay and recommendations** — Apple-side only.
 - **Smart playlists** — exported as static snapshots at export time; rules don't transfer.
 - **Library artists** — they auto-populate when songs are added.
-- **Songs unavailable in the US store** — landed in `unmatched.csv` rather than silently replaced with a different version.
+- **Songs unavailable in the destination store** — landed in `unmatched.csv` rather than silently replaced with a different version.
 
 ## Troubleshooting
 

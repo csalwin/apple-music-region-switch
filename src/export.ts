@@ -60,11 +60,17 @@ export async function runExport(_tokens: Tokens): Promise<void> {
         tracks.push(await toExportedSong(track, storefront));
       }
     } catch (e) {
-      progress.log(
-        `  warning: playlist "${pl.attributes.name}" track fetch failed: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      // Apple returns 404 (not an empty data array) for the tracks endpoint of
+      // an empty playlist. Treat that as "no tracks" silently; surface any
+      // other error as a warning.
+      const status = (e as { status?: number } | null)?.status;
+      if (status !== 404) {
+        progress.log(
+          `  warning: playlist "${pl.attributes.name}" track fetch failed: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        );
+      }
     }
 
     playlists.push({

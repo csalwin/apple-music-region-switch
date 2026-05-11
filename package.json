@@ -1,6 +1,6 @@
 {
   "name": "amtransfer",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "private": true,
   "description": "Migrate an Apple Music library across an Apple ID region change.",
