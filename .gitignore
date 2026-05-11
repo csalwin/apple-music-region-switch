@@ -1,0 +1,5 @@
+node_modules/
+.env
+amtransfer-data/
+*.tmp
+.DS_Store
