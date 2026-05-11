@@ -10,10 +10,68 @@ v0.1 — MVP. Tested in NZ → US migration. The export phase is the primary del
 
 ## Prerequisites
 
-- **Docker Desktop** (Mac, Windows, or Linux). The project ships only a Docker dev container; you don't need Bun, Node, or anything else installed locally.
 - **A browser** signed into music.apple.com on the account you want to read/write.
+- Either a prebuilt binary (Option A below) **or** Docker Desktop (Option B). You do not need Bun, Node, or anything else installed locally.
 
-## Setup
+## Installation
+
+Two options. Pick whichever fits.
+
+### Option A: Download a prebuilt binary (recommended)
+
+Grab the right binary for your machine from the [latest release](https://github.com/csalwin/apple-music-region-switch/releases/latest):
+
+| Your machine | File |
+|---|---|
+| macOS, Apple Silicon (M1–M4) | `amtransfer-darwin-arm64` |
+| macOS, Intel | `amtransfer-darwin-x64` |
+| Linux, x86_64 | `amtransfer-linux-x64` |
+| Linux, ARM64 | `amtransfer-linux-arm64` |
+| Windows, x86_64 | `amtransfer-windows-x64.exe` |
+
+**macOS / Linux:**
+
+```sh
+# Example for macOS Apple Silicon — substitute your file name as needed
+curl -LO https://github.com/csalwin/apple-music-region-switch/releases/latest/download/amtransfer-darwin-arm64
+chmod +x amtransfer-darwin-arm64
+mv amtransfer-darwin-arm64 amtransfer
+./amtransfer --help
+```
+
+On macOS, if Gatekeeper blocks the binary with *"cannot be opened because Apple cannot check it for malicious software"*, strip the quarantine attribute once:
+
+```sh
+xattr -d com.apple.quarantine ./amtransfer
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Invoke-WebRequest -OutFile amtransfer.exe `
+  https://github.com/csalwin/apple-music-region-switch/releases/latest/download/amtransfer-windows-x64.exe
+.\amtransfer.exe --help
+```
+
+The binary has zero runtime dependencies — no Bun, Node, or Docker required. Place it somewhere on your `PATH` if you want to call it from any directory.
+
+After installation, every command in the rest of this README that says
+
+```sh
+docker compose run --rm dev bun amtransfer.ts <subcommand>
+```
+
+can be replaced with the simpler
+
+```sh
+./amtransfer <subcommand>
+```
+
+You'll still need an `.env` file in the directory you run from (see "Harvesting your tokens" below). Output files appear in `./amtransfer-data/` next to the binary.
+
+### Option B: Run from source (Docker)
+
+If you want to inspect the source, modify the tool, or contribute:
 
 ```sh
 git clone https://github.com/csalwin/apple-music-region-switch.git
@@ -21,6 +79,8 @@ cd apple-music-region-switch
 cp .env.example .env
 docker compose build
 ```
+
+The rest of this README's commands are written for Option B (Docker prefix).
 
 ## Harvesting your tokens
 
