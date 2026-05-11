@@ -16,8 +16,8 @@ v0.1 — MVP. Tested in NZ → US migration. The export phase is the primary del
 ## Setup
 
 ```sh
-git clone https://github.com/<you>/amtransfer.git
-cd amtransfer
+git clone https://github.com/csalwin/apple-music-region-switch.git
+cd apple-music-region-switch
 cp .env.example .env
 docker compose build
 ```
