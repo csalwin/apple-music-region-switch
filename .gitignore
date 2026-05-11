@@ -3,3 +3,4 @@ node_modules/
 amtransfer-data/
 *.tmp
 .DS_Store
+.claude/

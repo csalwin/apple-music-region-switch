@@ -76,3 +76,87 @@ docker compose run --rm dev bun amtransfer.ts export
 This writes `amtransfer-data/export.json` containing all playlists, library songs, and library albums on the active account, plus their ISRCs and UPCs where available. Keep this file safe — it is the only artifact that cannot be regenerated after the iCloud Music Library is wiped.
 
 The match and import phases are documented further down; you can run them weeks or months later from the same `export.json`.
+
+## Full migration playbook
+
+The phases run independently with file-based handoff because real-world time elapses between them (Apple's 90-day region-change waiting period plus the cancel/resub gap).
+
+### 1. Validate auth (NZ account)
+
+```sh
+docker compose run --rm dev bun amtransfer.ts spike
+```
+
+Confirm `Overall: PASS`. Manually delete the `__amtransfer_spike__` playlist from music.apple.com.
+
+### 2. Export (NZ account, *before* cancellation)
+
+```sh
+docker compose run --rm dev bun amtransfer.ts export
+```
+
+`amtransfer-data/export.json` is now your safety net. Back it up somewhere durable (cloud drive, separate machine). After this step it's safe to cancel your NZ subscription.
+
+### 3. Region switch + resubscription
+
+Apple's region switcher enforces a 90-day waiting period since the last region change. Then resubscribe to Apple Music in your new region. Wait until your music.apple.com library is empty (it usually wipes within ~7 days of cancellation).
+
+### 4. Harvest new tokens (US account)
+
+Repeat the token-harvesting steps with your US-account session, replace the values in `.env`.
+
+### 5. Match (US tokens)
+
+```sh
+docker compose run --rm dev bun amtransfer.ts match
+```
+
+`matched.json` and `unmatched.csv` appear. Skim `unmatched.csv` — it lists songs and albums the US store doesn't carry (region-locked releases, indie distribution gaps, items without ISRCs). For these you have two options:
+
+- Live without them.
+- Manually find a US-store equivalent (different release, live version, etc.) and add it to your library via music.apple.com.
+
+### 6. Import (US tokens)
+
+```sh
+docker compose run --rm dev bun amtransfer.ts import
+```
+
+`import-report.json` summarises what happened; `import-failures.csv` lists items that matched but failed to write (usually transient — re-run import to retry).
+
+### Recovering from `unmatched.csv` and `import-failures.csv`
+
+Both files have the same essential columns (`name`, `artist`, `album`). Open in Numbers/Excel/Sheets. For each row, search for the song on music.apple.com US, click "+ Add" if the right one exists. There is no automated recovery in v0.1 — these files exist precisely so you have a sortable, filterable list of what to deal with manually.
+
+## What this tool does *not* do (v0.1)
+
+- **Ratings / "Loved" / star ratings** — Apple Music API has no write endpoint for these.
+- **Play counts and listening history** — Apple-side only, not portable.
+- **Replay and recommendations** — Apple-side only.
+- **Smart playlists** — exported as static snapshots at export time; rules don't transfer.
+- **Library artists** — they auto-populate when songs are added.
+- **Songs unavailable in the US store** — landed in `unmatched.csv` rather than silently replaced with a different version.
+
+## Troubleshooting
+
+**Spike fails with HTTP 401:** your tokens are stale or malformed. Re-harvest from a fresh music.apple.com session. Don't include the `Bearer ` prefix when copying — copy only the JWT itself.
+
+**Spike fails on the playlist write step but reads work:** Apple may have tightened write-side validation beyond the headers this tool sets. The `export` and `match` phases will still work. `import` will not; use `unmatched.csv` and the saved `export.json` to do the writes manually via music.apple.com.
+
+**Export reports 0 songs but you have a populated library:** confirm your `AM_USER_TOKEN` is from the correct account — it's account-scoped, not just region-scoped.
+
+**Re-running `import` is creating duplicate playlists:** the idempotency check uses exact name match. If your source library had two playlists with the same name, one of them was created on the first run and the second is being created on the re-run. Rename one in music.apple.com to fix.
+
+## Known limitations
+
+- Sequential request execution: the full flow for a ~2000-song / 30-playlist library takes 10–20 minutes.
+- No checkpoint resumability: a crashed phase re-runs from the start. Playlist idempotency prevents duplicates; songs/albums are no-ops if already present.
+- No automatic token refresh: tokens expire and must be re-harvested manually.
+
+## Contributing
+
+This is a personal tool published for others in the same situation. Bug reports welcome via GitHub Issues; PRs welcome but please open an issue first to discuss scope.
+
+## License
+
+MIT.
